@@ -126,13 +126,13 @@ async function apiPut<T>(
 export async function fetchPaymentMethods(fetcher: typeof fetch): Promise<PaymentMethod[]> {
   const wrapper = await apiGet<
     ApiResponse<{
-      paymentMethods: RawPaymentMethod[] | { data: RawPaymentMethod[] };
+      payment_methods: RawPaymentMethod[] | { data: RawPaymentMethod[] };
     }>
   >(fetcher, `/payment-methods`);
 
-  console.log(wrapper.result.paymentMethods)
+  console.log(wrapper.result.payment_methods)
   // soporta array directo o paginado { data: [...] }
-  const raw = wrapper.result.paymentMethods;
+  const raw = wrapper.result.payment_methods;
   const list = Array.isArray(raw) ? raw : raw.data;
 
   return list.map((m) => ({
