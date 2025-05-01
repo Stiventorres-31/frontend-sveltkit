@@ -94,7 +94,9 @@ async function apiGet<T>(
 ): Promise<T> {
   const url = new URL(`${PUBLIC_API_BASE_URL}${path}`);
   params && Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetcher(url.toString());
+  const res = await fetcher(url.toString(),{
+    headers: { 'Accept': 'application/json' },
+  });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`GET ${url.pathname} → ${res.status}: ${txt}`);
@@ -102,19 +104,18 @@ async function apiGet<T>(
   return (await res.json()) as T;
 }
 
-async function apiPost<T>(
+async function apiPut<T>(
   fetcher: typeof fetch,
   path: string,
   body: unknown
 ): Promise<T> {
   const res = await fetcher(`${PUBLIC_API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json','Accept': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`POST ${path} → ${res.status}: ${txt}`);
+    throw new Error(`${res.status}: ${res.statusText}`);
   }
   return (await res.json()) as T;
 }
@@ -127,8 +128,9 @@ export async function fetchPaymentMethods(fetcher: typeof fetch): Promise<Paymen
     ApiResponse<{
       paymentMethods: RawPaymentMethod[] | { data: RawPaymentMethod[] };
     }>
-  >(fetcher, `/getPaymentsMethods`);
+  >(fetcher, `/payment-methods`);
 
+  console.log(wrapper.result.paymentMethods)
   // soporta array directo o paginado { data: [...] }
   const raw = wrapper.result.paymentMethods;
   const list = Array.isArray(raw) ? raw : raw.data;
@@ -142,7 +144,7 @@ export async function fetchPaymentMethods(fetcher: typeof fetch): Promise<Paymen
 export async function fetchTransaction(fetcher: typeof fetch, id: string): Promise<Transaction> {
   const wrapper = await apiGet<ApiResponse<{ transactions: RawTransaction }>>(
     fetcher,
-    `/getTransaction`,
+    `/transactions/${id}`,
     { id }
   );
   const raw = wrapper.result.transactions;
@@ -168,21 +170,22 @@ export async function fetchTransaction(fetcher: typeof fetch, id: string): Promi
 export async function postPayment(
   fetcher: typeof fetch,
   payload: {
-    customer_id: string;
-    payment_method: string;
-    amount: number;
-    currency: string;
-    transaction_id: string;
+    customer_id:     string;
+    payment_method:  string;
+    amount:          number;
+    currency:        string;
+    transaction_id:  string;
   }
 ): Promise<PaymentResult> {
-  const wrapper = await apiPost<ApiResponse<RawGeneratePayment>>(
+  const wrapper = await apiPut<ApiResponse<RawGeneratePayment>>(
     fetcher,
-    `/generatePayment`,
+    `/transactions/${payload.transaction_id}`,
     payload
   );
   return {
     transaction_id: String(wrapper.result.transaction_id),
-    url_payment: wrapper.result.url_payment,
-    message: wrapper.message
+    url_payment:    wrapper.result.url_payment,
+    message:        wrapper.message,
   };
 }
+
